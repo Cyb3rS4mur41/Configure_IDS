@@ -1,0 +1,56 @@
+Snort rules
+
+HTTP GET Request Detection: This rule detects HTTP GET requests to specific domains, which can indicate malicious web activity.
+alert tcp any any -> any 80 (msg:"Possible HTTP GET request"; content:"GET"; http_method; content:"example.com"; http_host; sid:1000001; rev:1;
+
+Suspicious User-Agent String: This rule identifies unusual User-Agent strings, often used by attackers to launch attacks or perform reconnaissance:
+alert tcp any any -> any any (msg:"Suspicious User-Agent detected"; flow:to_server,established; content:"User-Agent|3a| "; nocase; content:"curl|2f|"; nocase; 
+sid:1000002; rev:1;)
+
+SQL Injection Attempts: Rules targeting SQL injection attempts by looking for specific patterns in HTTP POST requests to login pages:
+alert tcp any any -> any any (msg:"Possible SQL Injection attempt"; flow:to_server,established; content:"POST"; nocase; content:"/login.php"; nocase; 
+content:"username="; nocase; content:"password="; nocase; content:"'"; sid:1000003; rev:1;)
+
+DNS Query Detection: This rule detects suspicious DNS queries which could indicate domain hijacking or command-and-control server communication:
+alert udp any any -> any 53 (msg:"Suspicious DNS Query detected"; content:"|00 01 00 00 00 01|"; depth:6; content:"example.com"; nocase; sid:1000004; rev:1;)
+
+Malware Signature Detection: Identifies known malware signatures in network traffic, like the Zeus botnet:
+alert tcp any any -> any any (msg:"Possible Zeus Botnet C&C Traffic"; flow:established,to_server; content:"|5a 4f 4f 4d 00 00|"; depth:6; sid:1000005; rev:1;)
+
+Detecting brute force attempts on services like SSH, FTP, and web logins is crucial to prevent unauthorized access.
+alert tcp $EXTERNAL_NET any -> $HOME_NET 22 (msg:"SSH Brute Force Attempt"; flow:to_server,established; 
+detection_filter:track by_src, count 5, seconds 60; sid:1000006; rev:1;)
+
+Denial of Service (DoS) Attack Detection
+alert icmp any any -> $HOME_NET any (msg:"ICMP Flood DoS Attack"; threshold:type both, track by_src, count 100, seconds 10; sid:1000007; rev:1;)
+
+Port scans are often precursors to attacks, as attackers probe for open ports
+alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"TCP Port Scan Detected"; flags:S; threshold:type both, track by_src, count 20, seconds 60; sid:1000008; rev:1;)
+
+Detecting communication between malware and its control server is critical for identifying compromised systems.
+alert tcp $HOME_NET any -> $EXTERNAL_NET 6667 (msg:"IRC Botnet Command and Control Traffic"; flow:to_server,established; 
+content:"NICK "; depth:5; sid:1000009; rev:1;)
+
+Data exfiltration involves unauthorized data transfer from the network, often indicating a breach.
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"Potential Data Exfiltration"; content:"|e2 98 a0|"; depth:3; flow:to_server,established; sid:1000010; rev:1;)
+
+Detecting file inclusion vulnerabilities, common in web applications, helps prevent remote code execution.
+alert tcp $EXTERNAL_NET any -> $HOME_NET 80 (msg:"PHP Remote File Inclusion Attempt"; flow:to_server,established; uricontent:"/index.php?file="; 
+nocase; pcre:"/index\.php\?file=\bhttp/"; sid:1000011; rev:1;)
+
+XSS attacks can compromise user data and web application integrity.
+alert tcp $EXTERNAL_NET any -> $HOME_NET 80 (msg:"Cross-Site Scripting Attack"; flow:to_server,established; uricontent:"<script>"; nocase; sid:1000012; rev:1;)
+
+Telnet services are vulnerable to unauthorized access attempts.
+alert tcp $EXTERNAL_NET any -> $HOME_NET 23 (msg:"Telnet Login Attempt"; flow:to_server,established; content:"login"; sid:1000016; rev:1;)
+
+Detecting malicious JavaScript in HTTP responses
+alert tcp $HOME_NET any -> $EXTERNAL_NET 80 (msg:"Malicious JavaScript Detected"; flow:to_client,established; 
+content:"<script>"; nocase; content:"eval("; sid:1000018; rev:1;)
+
+Detecting DNS tunneling, which is often used for data exfiltration
+alert udp any 53 -> any any (msg:"Possible DNS Tunneling"; content:".com"; pcre:"/([a-z0-9]{60,})\./"; sid:1000020; rev:1;)
+
+Detecting file downloads over HTTP, which can be used to detect the download of potentially malicious files.
+alert tcp $EXTERNAL_NET any -> $HOME_NET 80 (msg:"HTTP File Download"; flow:to_client,established; content:"Content-Disposition: attachment"; 
+http_header; sid:1000021; rev:1;)
